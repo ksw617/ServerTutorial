@@ -3,10 +3,12 @@ using namespace std;
 
 #pragma comment(lib, "Ws2_32.lib")	
 #include <WinSock2.h>	
-#include <WS2tcpip.h>  // 사용
+#include <WS2tcpip.h> 
 
 int main()
 {
+
+	printf("==== CLIENT ====\n");
 
 	WORD wVersionRequested;
 	WSAData wsaData;
@@ -34,29 +36,66 @@ int main()
 	inet_pton(AF_INET, "127.0.0.1", &service.sin_addr);
 	service.sin_port = htons(27015);
 
-	//서버에 접속 service(접속할 서버 정보)
-	//connect 함수 에러 발생시
 	if (connect(connectSocket, (SOCKADDR*)&service, sizeof(service)) == SOCKET_ERROR)
 	{
-		//에러 코드 확인
+
 		printf("connect function failed with error : %d\n", WSAGetLastError());
-		//소켓 닫아주고
 		closesocket(connectSocket);
-		//win sock dll 사용 종료
 		WSACleanup();
-		//프로그램 종료
 		return 1;
 
 	}
 
 	printf("Connect to Server\n");
 
-	while (true)
+	char recvBuffer[512];
+	int recvLen = recv(connectSocket, recvBuffer, sizeof(recvBuffer), 0);
+
+	if (recvLen <= 0)
 	{
-		//Todo
-		Sleep(1000);
+		printf("Recv Error : %d\n", WSAGetLastError());
+		closesocket(connectSocket);
+		WSACleanup();
+		return 1;
+
 	}
 
+	printf("Recv buffer Data : %s\n", recvBuffer);
+	printf("Recv buffer Length : %d bytes\n", recvLen);
+
+	while (true)
+	{
+
+		//Client Send
+		char sendBuffer[] = "Hello this is Client!";
+
+		if (send(connectSocket, sendBuffer, sizeof(sendBuffer), 0) == SOCKET_ERROR)
+		{
+			printf("Send Error %d\n", WSAGetLastError());
+			closesocket(connectSocket);
+			WSACleanup();
+			return 1;
+		}
+
+		printf("Send Data : %s\n", sendBuffer);
+
+		Sleep(1000);
+
+		if (GetAsyncKeyState(VK_RETURN))
+		{
+			//연결 끊기			  
+			//SD_RECEIVE(0) : recv를 막는다. 이제 받을거 없어
+			//SD_SEND(1)	: send를 막는다. 이제 보낼거 없어
+			//SD_BOTH(2) 	: 둘다 막는다. 이제 보내일도 받을 일도 없음.
+			shutdown(connectSocket, SD_BOTH); // SD_RECEIVE, SED_SEND 둘다 적용된거
+			//while문 나가기
+			break;
+			
+		}
+	
+	}
+
+	//전화기 꺼버리기
 	closesocket(connectSocket);
 	WSACleanup();
 

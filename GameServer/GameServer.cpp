@@ -3,11 +3,14 @@ using namespace std;
 
 #pragma comment(lib, "Ws2_32.lib")	
 #include <WinSock2.h>	
-#include <WS2tcpip.h>  // 사용
+#include <WS2tcpip.h> 
 
 
 int main()
 {
+
+	printf("==== SERVER ====\n");
+
 	WORD wVersionRequested;
 	WSAData wsaData;
 
@@ -50,23 +53,61 @@ int main()
 
 	}
 
+	printf("listening...\n");
+
+	SOCKADDR_IN clientService;
+	int addrLen = sizeof(clientService);
+	memset(&clientService, 0, addrLen);
+
+	SOCKET accpetSocket = accept(listenSocket, (SOCKADDR*)&clientService, &addrLen);
+
+	if (accpetSocket == INVALID_SOCKET)
+	{
+
+		printf("accept failed with error : %d\n", WSAGetLastError());
+		closesocket(listenSocket);
+		WSACleanup();
+		return 1;
+	}
+
+	printf("Client Connected.\n");
+
+
+	char ipAddress[16];
+
+	inet_ntop(AF_INET, &clientService.sin_addr, ipAddress, sizeof(ipAddress));
+	printf("Client connected IP : %s\n", ipAddress);
+
+	char sendBuffer[] = "Hello this is Server!";
+
+	if (send(accpetSocket, sendBuffer, sizeof(sendBuffer), 0) == SOCKET_ERROR)
+	{
+		printf("Send Error %d\n", WSAGetLastError());
+		closesocket(accpetSocket);
+		closesocket(listenSocket);
+		WSACleanup();
+		return 1;
+	}
+
+	printf("Send Data : %s\n", sendBuffer);
+
+
 	while (true)
 	{
-		printf("listening...\n");
+		//받기
+		char recvBuffer[512];
+		int recvLen = recv(accpetSocket, recvBuffer, sizeof(recvBuffer), 0);
 
-		SOCKET accpetSocket = accept(listenSocket, NULL, NULL);
-
-		//반환된 소켓이 유효하지 않다면
-		if (accpetSocket == INVALID_SOCKET)
+		if (recvLen <= 0)
 		{
-			//에러 코드 확인
-			printf("accept failed with error : %d\n", WSAGetLastError());
-			//다시 루프
+			printf("Recv Error : %d\n", WSAGetLastError());
+			closesocket(accpetSocket);
 			continue;
+
 		}
 
-		//연결 성공
-		printf("Client Connected.\n");
+		printf("Recv buffer Data : %s\n", recvBuffer);
+		printf("Recv buffer Length : %d bytes\n", recvLen);
 	}
 
 

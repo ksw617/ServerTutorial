@@ -48,21 +48,6 @@ int main()
 
 	printf("Connect to Server\n");
 
-	char recvBuffer[512];
-	int recvLen = recv(connectSocket, recvBuffer, sizeof(recvBuffer), 0);
-
-	if (recvLen <= 0)
-	{
-		printf("Recv Error : %d\n", WSAGetLastError());
-		closesocket(connectSocket);
-		WSACleanup();
-		return 1;
-
-	}
-
-	printf("Recv buffer Data : %s\n", recvBuffer);
-	printf("Recv buffer Length : %d bytes\n", recvLen);
-
 	while (true)
 	{
 
@@ -83,19 +68,13 @@ int main()
 
 		if (GetAsyncKeyState(VK_RETURN))
 		{
-			//연결 끊기			  
-			//SD_RECEIVE(0) : recv를 막는다. 이제 받을거 없어
-			//SD_SEND(1)	: send를 막는다. 이제 보낼거 없어
-			//SD_BOTH(2) 	: 둘다 막는다. 이제 보내일도 받을 일도 없음.
-			shutdown(connectSocket, SD_BOTH); // SD_RECEIVE, SED_SEND 둘다 적용된거
-			//while문 나가기
+			shutdown(connectSocket, SD_BOTH); 
 			break;
 			
 		}
 	
 	}
 
-	//전화기 꺼버리기
 	closesocket(connectSocket);
 	WSACleanup();
 

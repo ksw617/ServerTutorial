@@ -1,44 +1,54 @@
 #include <iostream>
-#include <thread> 
+
 using namespace std;
 
 #pragma comment(lib, "Ws2_32.lib")	
 #include <WinSock2.h>	
 #include <WS2tcpip.h> 
 
+#include <thread> 
+#include <MSWSock.h> 
 
-struct Session
-{
-	WSAOVERLAPPED overlapped = {};
-	SOCKET socket = INVALID_SOCKET;
-	char recvBuffer[512] = {};
-};
+SOCKET listenSocket;
+LPFN_ACCEPTEX lpfnAcceptEx = nullptr;
+GUID guidAcceptEx = WSAID_ACCEPTEX;
 
-void RecvThread(HANDLE iocpHandle)
+void AcceptThrad(HANDLE iocpHandle)
 {
-	DWORD byteTransferred = 0;
+	DWORD bytesTransferred = 0;
 	ULONG_PTR key = 0;
-	Session* session = nullptr;
+	WSAOVERLAPPED* overlapped = {};
 
 	while (true)
 	{
 		printf("Waiting...\n");
-		GetQueuedCompletionStatus(iocpHandle, &byteTransferred, &key, (LPOVERLAPPED*)&session, INFINITE);
+		if (GetQueuedCompletionStatus(iocpHandle, &bytesTransferred, &key, (LPOVERLAPPED*)&overlapped, INFINITE))
+		{
+			printf("Client connected....\n");
 
-		printf("recv Length : %s\n", session->recvBuffer);
+			char lpOutputBuf[1024];
+			SOCKET acceptSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+			if (acceptSocket == INVALID_SOCKET)
+			{
+				printf("Accept Socket failed with error : %d\n", WSAGetLastError());
+				return;
+			}
+			DWORD dwBytes;
 
-		//수신 버퍼 및 기타 정보를 설정하여 다시 데이터 수신 준비
-		WSABUF wsaBuf;
-		wsaBuf.buf = session->recvBuffer;		 //수신 버퍼 지정
-		wsaBuf.len = sizeof(session->recvBuffer);//버퍼의 크기 지정
+			if (lpfnAcceptEx(listenSocket, acceptSocket, lpOutputBuf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, overlapped))
+			{
+				if (WSAGetLastError() != ERROR_IO_PENDING)
+				{
+					printf("AceeptEx failed with error : %d\n", WSAGetLastError());
+					closesocket(acceptSocket);
+					return;
+				}
+			}
 
-		DWORD recvLen = 0;						//수신된 데이터 길이를 저장할 변수
-		DWORD flags = 0;						//flags 현재 사용하지 않음
-
-		//비동기 수신을 다시 시작. 지속적으로 데이터 수신을 위해 반복
-		WSARecv(session->socket, OUT & wsaBuf, 1, OUT & recvLen, OUT & flags, &session->overlapped, NULL);
+		}
 	}
 }
+
 
 int main()
 {
@@ -56,7 +66,7 @@ int main()
 		return 1;
 	}
 
-	SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+	listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
 	if (listenSocket == INVALID_SOCKET)
 	{
@@ -89,41 +99,49 @@ int main()
 
 	printf("listening...\n");
 
-	HANDLE iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, NULL);
-	thread t(RecvThread, iocpHandle);
 
-	char recvBuffer[512] = {};
+	DWORD dwBytes;
 
-	while (true)
+	if (WSAIoctl(listenSocket, SIO_GET_EXTENSION_FUNCTION_POINTER, &guidAcceptEx, sizeof(guidAcceptEx),
+		&lpfnAcceptEx, sizeof(lpfnAcceptEx), &dwBytes, NULL, NULL) == SOCKET_ERROR)
 	{
+		printf("WSAIoctl failed with error : %d\n", WSAGetLastError());
+		closesocket(listenSocket);
+		WSACleanup();
+		return 1;
+	}
 
-		SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
-		if (acceptSocket == INVALID_SOCKET)
+	SOCKET acceptSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+	if (acceptSocket == INVALID_SOCKET)
+	{
+		printf("Accept Socket failed with error : %d\n", WSAGetLastError());
+		closesocket(listenSocket);
+		WSACleanup();
+		return 1;
+	}
+
+
+	
+	HANDLE iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, NULL);
+	thread t(AcceptThrad, iocpHandle);
+
+	ULONG_PTR key = 0;
+	CreateIoCompletionPort((HANDLE)listenSocket, iocpHandle, key, 0);;
+
+	char lpOutputBuf[1024];
+
+	WSAOVERLAPPED overlapped = {};
+
+	if (lpfnAcceptEx(listenSocket, acceptSocket, lpOutputBuf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, &overlapped))
+	{
+		if (WSAGetLastError() != ERROR_IO_PENDING)
 		{
+			printf("AceeptEx failed with error : %d\n", WSAGetLastError());
+			closesocket(acceptSocket);
 			closesocket(listenSocket);
 			WSACleanup();
 			return 1;
-
 		}
-
-		printf("Client Connected\n");
-
-		ULONG_PTR key = 0;
-		CreateIoCompletionPort((HANDLE)acceptSocket, iocpHandle, key, 0);
-
-
-		Session* session = new Session;
-		session->socket = acceptSocket;
-
-		WSABUF wsaBuf;
-		wsaBuf.buf = session->recvBuffer;
-		wsaBuf.len = sizeof(session->recvBuffer);
-
-		DWORD recvLen = 0;
-		DWORD flags = 0;
-		WSAOVERLAPPED overlapped = {};
-
-		WSARecv(acceptSocket, OUT & wsaBuf, 1, OUT & recvLen, OUT & flags, &session->overlapped, NULL);
 	}
 
 

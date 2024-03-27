@@ -9,9 +9,9 @@ using namespace std;
 
 struct Session
 {
-	WSAOVERLAPPED overlapped = {};	// 비동기 I/O 작업을 위한 구조체
-	SOCKET socket = INVALID_SOCKET;	// 클라이언트와 통신을 담당하는 소켓
-	char recvBuffer[512] = {};		// 데이터 수신을 위한 버퍼
+	WSAOVERLAPPED overlapped = {};
+	SOCKET socket = INVALID_SOCKET;
+	char recvBuffer[512] = {};
 };
 
 void RecvThread(HANDLE iocpHandle)
@@ -23,12 +23,20 @@ void RecvThread(HANDLE iocpHandle)
 	while (true)
 	{
 		printf("Waiting...\n");
-		//IOCP에서 작업이 완료될 때까지 대기
 		GetQueuedCompletionStatus(iocpHandle, &byteTransferred, &key, (LPOVERLAPPED*)&session, INFINITE);
 
-		printf("recv Length : %s\n", session->recvBuffer); // 수신된 데이터 길이 출력
+		printf("recv Length : %s\n", session->recvBuffer);
 
-		
+		//수신 버퍼 및 기타 정보를 설정하여 다시 데이터 수신 준비
+		WSABUF wsaBuf;
+		wsaBuf.buf = session->recvBuffer;		 //수신 버퍼 지정
+		wsaBuf.len = sizeof(session->recvBuffer);//버퍼의 크기 지정
+
+		DWORD recvLen = 0;						//수신된 데이터 길이를 저장할 변수
+		DWORD flags = 0;						//flags 현재 사용하지 않음
+
+		//비동기 수신을 다시 시작. 지속적으로 데이터 수신을 위해 반복
+		WSARecv(session->socket, OUT & wsaBuf, 1, OUT & recvLen, OUT & flags, &session->overlapped, NULL);
 	}
 }
 
@@ -59,7 +67,7 @@ int main()
 
 	SOCKADDR_IN service;
 	memset(&service, 0, sizeof(service));
-	service.sin_family = AF_INET; 
+	service.sin_family = AF_INET;
 	service.sin_addr.s_addr = htonl(INADDR_ANY);
 	service.sin_port = htons(27015);
 
@@ -88,7 +96,7 @@ int main()
 
 	while (true)
 	{
-		
+
 		SOCKET acceptSocket = accept(listenSocket, NULL, NULL);
 		if (acceptSocket == INVALID_SOCKET)
 		{
@@ -103,22 +111,22 @@ int main()
 		ULONG_PTR key = 0;
 		CreateIoCompletionPort((HANDLE)acceptSocket, iocpHandle, key, 0);
 
-		//새로 연결된 클라이언트에 대한 세션을 생성
+
 		Session* session = new Session;
-		session->socket = acceptSocket; // 세션에 클라이언트 소켓 할당
+		session->socket = acceptSocket;
 
 		WSABUF wsaBuf;
 		wsaBuf.buf = session->recvBuffer;
 		wsaBuf.len = sizeof(session->recvBuffer);
 
-		DWORD recvLen = 0;	 
-		DWORD flags = 0;	  
+		DWORD recvLen = 0;
+		DWORD flags = 0;
 		WSAOVERLAPPED overlapped = {};
 
 		WSARecv(acceptSocket, OUT & wsaBuf, 1, OUT & recvLen, OUT & flags, &session->overlapped, NULL);
 	}
 
-	
+
 	t.join();
 
 	closesocket(listenSocket);

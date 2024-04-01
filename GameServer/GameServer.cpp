@@ -27,7 +27,9 @@ void AcceptThrad(HANDLE iocpHandle)
 			printf("Client connected....\n");
 
 			char lpOutputBuf[1024];
+
 			SOCKET acceptSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
+
 			if (acceptSocket == INVALID_SOCKET)
 			{
 				printf("Accept Socket failed with error : %d\n", WSAGetLastError());
@@ -68,12 +70,14 @@ int main()
 
 	listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 
+
 	if (listenSocket == INVALID_SOCKET)
 	{
 		printf("socket function failed with error %d\n", WSAGetLastError());
 		WSACleanup();
 		return 1;
 	}
+
 
 	SOCKADDR_IN service;
 	memset(&service, 0, sizeof(service));
@@ -132,7 +136,7 @@ int main()
 
 	WSAOVERLAPPED overlapped = {};
 
-	if (lpfnAcceptEx(listenSocket, acceptSocket, lpOutputBuf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, &overlapped))
+	if (lpfnAcceptEx(listenSocket, acceptSocket, lpOutputBuf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, &overlapped) == FALSE)
 	{
 		if (WSAGetLastError() != ERROR_IO_PENDING)
 		{

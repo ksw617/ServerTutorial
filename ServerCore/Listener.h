@@ -1,17 +1,16 @@
 #pragma once
-#include "CorePch.h"
+
 class Listener
 {
 private:
 	SOCKET socket = INVALID_SOCKET;
-	HANDLE iocpHandle = NULL;
+	//지우고
 public:
-	Listener();
+	Listener() = default;;
 	~Listener();
 public:
-	HANDLE GetHandle() const { return iocpHandle; }
-public:
-	bool StartAccept(class Service& service);
+	//포인터 변경
+	bool StartAccept(class Service* service);
 	void CloseSocket();
 
 };

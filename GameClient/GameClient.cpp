@@ -99,18 +99,6 @@ int main()
 	}
 
 
-	//DisconnectdEx 함수포인터 로드
-	LPFN_DISCONNECTEX lpfnDisconnectEx = NULL;
-	GUID guidDisconnectEx = WSAID_DISCONNECTEX;
-	if (WSAIoctl(connectSocket, SIO_GET_EXTENSION_FUNCTION_POINTER, &guidDisconnectEx, sizeof(guidDisconnectEx),
-		&lpfnDisconnectEx, sizeof(lpfnDisconnectEx), &dwBytes, NULL, NULL) == SOCKET_ERROR)
-	{
-		printf("WSAIoctl DisonnectEx failed with error : %d\n", WSAGetLastError());
-		closesocket(connectSocket);
-		WSACleanup();
-		return 1;
-	}
-
 	SOCKADDR_IN serverService;
 	memset(&serverService, 0, sizeof(serverService));
 	serverService.sin_family = AF_INET;
@@ -155,21 +143,10 @@ int main()
 
 	}
 
-	IocpEvent* disConnectEvent = new IocpEvent;
-	disConnectEvent->type = DISCONNECT;
-
-	if (!lpfnDisconnectEx(connectSocket, &disConnectEvent->overlapped, 0, 0))
+	while (true)
 	{
-		if (WSAGetLastError() != ERROR_IO_PENDING)
-		{
-			printf("DisConnectEx failed with error : %d\n", WSAGetLastError());
-			closesocket(connectSocket);
-			WSACleanup();
-			return 1;
-		}
 
 	}
-
 
 
 	t.join();

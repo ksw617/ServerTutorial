@@ -4,14 +4,17 @@ class Listener
 {
 private:
 	SOCKET socket = INVALID_SOCKET;
-	//지우고
 public:
 	Listener() = default;;
 	~Listener();
 public:
-	//포인터 변경
 	bool StartAccept(class Service* service);
+
+	//Accept함수에 등록해주는 용도로
+	void RegisterAccept(class IocpEvent* acceptEvent);
+
 	void CloseSocket();
+
 
 };
 

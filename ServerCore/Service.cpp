@@ -2,6 +2,7 @@
 #include "Service.h"
 #include "SocketHelper.h"
 #include "IocpCore.h"
+#include "Listener.h"
 
 Service::Service(wstring ip, uint16 port)
 {
@@ -26,4 +27,20 @@ Service::~Service()
 		delete iocpCore;
 		iocpCore = nullptr;
 	}
+}
+
+bool Service::Start()
+{
+	listener = new Listener;
+	return listener->StartAccept(this);
+}
+
+bool Service::ObserveIO(DWORD time)
+{
+	if (iocpCore != nullptr)
+	{
+		return iocpCore->ObserveIO(time);
+	}
+
+	return false;
 }

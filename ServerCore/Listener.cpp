@@ -3,6 +3,8 @@
 #include "Service.h"
 #include "SocketHelper.h"
 #include "IocpCore.h"
+#include "Session.h"
+#include "IocpEvent.h"
 
 
 Listener::~Listener()
@@ -23,7 +25,6 @@ bool Listener::StartAccept(Service* service)
 	if (!SocketHelper::SetLinger(socket, 0, 0))
 		return false;
 
-	//변경
 	ULONG_PTR key = 0;
 	service->GetIocpCore()->Register((HANDLE)socket, key);
 
@@ -37,25 +38,31 @@ bool Listener::StartAccept(Service* service)
 
 	printf("listening...\n");
 
-	SOCKET acceptSocket = SocketHelper::CreateSocket();
-	if (acceptSocket == INVALID_SOCKET)
-		return false;
-
-
-	char lpOutputBuf[1024] = {};
-	WSAOVERLAPPED overlapped = {};
-	DWORD dwBytes = 0;
-	if (!SocketHelper::AcceptEx(socket, acceptSocket, lpOutputBuf, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, &overlapped))
-	{
-		if (WSAGetLastError() != ERROR_IO_PENDING)
-			return false;	
-	}
+	IocpEvent* acceptEvent = new IocpEvent(EventType::ACCEPT);
+	RegisterAccept(acceptEvent);
 
 	return true;
 
 }
 
+void Listener::RegisterAccept(IocpEvent* acceptEvent)
+{
+	Session* session = new Session;
+	acceptEvent->Init();
+
+
+	DWORD dwBytes = 0;
+	//session을 acceptEvent로 교체
+	if (!SocketHelper::AcceptEx(socket, session->GetSocket(), session->recvBuffer, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, (LPOVERLAPPED)acceptEvent))
+	{
+		if (WSAGetLastError() != ERROR_IO_PENDING)
+			RegisterAccept(acceptEvent);
+	}
+}
+
+
 void Listener::CloseSocket()
 {
 	SocketHelper::CloseSocket(socket);
 }
+

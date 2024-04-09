@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "IocpCore.h"
 #include "IocpEvent.h"
+#include "Session.h"
 
 IocpCore::IocpCore()
 {
@@ -21,20 +22,23 @@ bool IocpCore::ObserveIO(DWORD time)
 {
 	DWORD bytesTransferred = 0;
 	ULONG_PTR key = 0;
-	//Session을 iocpEvent로 교체
 	IocpEvent* iocpEvent = nullptr;
 
 	printf("Waiting...\n");
-	//iocpEvent로 교체
 	if (GetQueuedCompletionStatus(iocpHandle, &bytesTransferred, &key, (LPOVERLAPPED*)&iocpEvent, time))
 	{
 		switch (iocpEvent->eventType)
 		{
 			case EventType::ACCEPT:
-				printf("Client connected....\n");
+				//TEST
+			{
+				AcceptEvent* acceptEvent = (AcceptEvent*)iocpEvent;
+				printf("Client connected.... %d byte\n", acceptEvent->session->testNum); 
+			}
+				
 				break;
-		default:
-			break;
+			default:
+				break;
 		}
 		
 	}

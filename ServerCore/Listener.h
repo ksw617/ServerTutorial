@@ -10,8 +10,8 @@ public:
 public:
 	bool StartAccept(class Service* service);
 
-	//Accept함수에 등록해주는 용도로
-	void RegisterAccept(class IocpEvent* acceptEvent);
+	//AcceptEvent로 바꿈
+	void RegisterAccept(class AcceptEvent* acceptEvent);
 
 	void CloseSocket();
 

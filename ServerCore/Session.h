@@ -2,11 +2,12 @@
 class Session
 {
 public:
-	WSAOVERLAPPED overlapped = {};
+	//WSAOVERLAPPED overlapped = {};
 private:
 	SOCKET socket = INVALID_SOCKET;
 public:
 	BYTE recvBuffer[1024] = {};
+	int testNum = 0;
 public:
 	Session();
 	~Session();

@@ -38,23 +38,28 @@ bool Listener::StartAccept(Service* service)
 
 	printf("listening...\n");
 
-	IocpEvent* acceptEvent = new IocpEvent(EventType::ACCEPT);
+	//AcceptEvent 변환
+	AcceptEvent* acceptEvent = new AcceptEvent();
 	RegisterAccept(acceptEvent);
 
 	return true;
 
 }
 
-void Listener::RegisterAccept(IocpEvent* acceptEvent)
+//AcceptEvent 변환
+void Listener::RegisterAccept(AcceptEvent* acceptEvent)
 {
 	Session* session = new Session;
 	acceptEvent->Init();
+	//acceptEvent 에 session 연결
+	acceptEvent->session = session;
+	session->testNum = 11;
 
 
 	DWORD dwBytes = 0;
-	//session을 acceptEvent로 교체
 	if (!SocketHelper::AcceptEx(socket, session->GetSocket(), session->recvBuffer, 0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &dwBytes, (LPOVERLAPPED)acceptEvent))
 	{
+		//에러인 상황
 		if (WSAGetLastError() != ERROR_IO_PENDING)
 			RegisterAccept(acceptEvent);
 	}

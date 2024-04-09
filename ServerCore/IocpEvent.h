@@ -10,8 +10,6 @@ enum class EventType : uint8
 
 };
 
-//자식 : [부모 데이터...][상속받은 자식 데이터...]
-
 class IocpEvent	: public OVERLAPPED
 {
 public:
@@ -22,3 +20,12 @@ public:
 	void Init();
 };
 
+class AcceptEvent : public IocpEvent
+{
+public:
+	class Session* session = nullptr;
+public:
+	//생성자 호출 될때 부모에 있는 생성자 IocpEvent(EventType type) 호출
+	// 매개변수로 나 ACCEPT이라고 넣어줌
+	AcceptEvent() : IocpEvent(EventType::ACCEPT) {}
+};

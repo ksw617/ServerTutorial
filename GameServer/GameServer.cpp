@@ -1,12 +1,18 @@
 #include "pch.h"
-#include <Service.h>
+#include <ServerService.h>
 
 
 int main()
 {
 	printf("==== SERVER ====\n");
 
-	Service* service = new Service(L"127.0.0.1", 27015);
+	Service* service = new ServerService(L"127.0.0.1", 27015);
+
+	if (!service->Start())
+	{
+		printf("Server Service Error\n");
+		return 1;
+	}
 
 
 	//람다로 관찰 실행
@@ -19,7 +25,6 @@ int main()
 		}
 	);
 
-	service->Start();
 
 	t.join();
 

@@ -10,8 +10,6 @@ bool SocketHelper::StartUp()
         return false;
 
     SOCKET tempSocket = CreateSocket();
-    //Client는 Accept이 없는데 어디서 초기화 할지는 고민 해봅시다. 
-    //AcceptEx 함수 포인터의 주소를 얻기위해. 
     SetIoControl(tempSocket, WSAID_ACCEPTEX, (LPVOID*)&AcceptEx);
 
     CloseSocket(tempSocket);
@@ -45,6 +43,12 @@ bool SocketHelper::SetLinger(SOCKET socket, u_short onOff, u_short time)
     linger.l_onoff = onOff;
     linger.l_linger = time;
     return SetSocketOpt(socket, SOL_SOCKET, SO_LINGER, linger);
+}
+
+//추가
+bool SocketHelper::SetUpdateAcceptSocket(SOCKET acceptSocket, SOCKET ListenSocket)
+{
+    return SetSocketOpt(acceptSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, ListenSocket);
 }
 
 bool SocketHelper::Bind(SOCKET socket, SOCKADDR_IN sockAddr)

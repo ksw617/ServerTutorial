@@ -1,21 +1,28 @@
 #pragma once
 class IocpCore;
-class Listener;
+
+enum class ServiceType : uint8
+{
+	NONE,
+	SERVER,
+	CLIENT,
+};
 
 class Service
 {
 private:
+	ServiceType serviceType = ServiceType::NONE;
 	SOCKADDR_IN sockAddr = {};
-	Listener* listener = nullptr;
 	IocpCore* iocpCore = nullptr;
+protected:
+	shared_mutex rwLock;
 public:
-	Service(wstring ip, uint16 port);
-	~Service();
+	Service(ServiceType type, wstring ip, uint16 port);
+	virtual ~Service();
 public:
 	SOCKADDR_IN& GetSockAddr() { return sockAddr; }
 	IocpCore* GetIocpCore() const { return iocpCore; }
 public:
-	bool Start();
+	virtual bool Start() abstract;
 	bool ObserveIO(DWORD time = INFINITE);
 };
-

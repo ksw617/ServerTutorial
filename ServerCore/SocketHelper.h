@@ -13,6 +13,8 @@ public:
 	//소켓 옵션들
 	static bool SetReuseAddress(SOCKET socket, bool enable);
 	static bool SetLinger(SOCKET socket, u_short onOff, u_short time);
+	//ListenSocket 정보들을 AcceptSocket에 업데이터
+	static bool SetUpdateAcceptSocket(SOCKET acceptSocket, SOCKET ListenSocket);
 public:
 	static bool Bind(SOCKET socket, SOCKADDR_IN sockAddr);
 	static bool Listen(SOCKET socket, int backlog = SOMAXCONN);

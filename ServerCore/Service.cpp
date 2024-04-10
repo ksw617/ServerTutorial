@@ -2,16 +2,17 @@
 #include "Service.h"
 #include "SocketHelper.h"
 #include "IocpCore.h"
-#include "Listener.h"
 
-Service::Service(wstring ip, uint16 port)
+
+Service::Service(ServiceType type, wstring ip, uint16 port)	: serviceType(type)
 {
-	SocketHelper::StartUp();
+	if (SocketHelper::StartUp())
+		return;
 
 	memset(&sockAddr, 0, sizeof(sockAddr));
 	sockAddr.sin_family = AF_INET;
 
-	IN_ADDR address;
+	IN_ADDR address{};
 	InetPton(AF_INET, ip.c_str(), &address);
 	sockAddr.sin_addr = address;
 	sockAddr.sin_port = htons(port);
@@ -29,11 +30,6 @@ Service::~Service()
 	}
 }
 
-bool Service::Start()
-{
-	listener = new Listener;
-	return listener->StartAccept(this);
-}
 
 bool Service::ObserveIO(DWORD time)
 {

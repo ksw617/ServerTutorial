@@ -2,6 +2,7 @@
 #include "IocpCore.h"
 #include "IocpEvent.h"
 #include "Session.h"
+#include "IocpObj.h"
 
 IocpCore::IocpCore()
 {
@@ -13,9 +14,11 @@ IocpCore::~IocpCore()
 	CloseHandle(iocpHandle);
 }
 
-void IocpCore::Register(HANDLE socket, ULONG_PTR key)
+void IocpCore::Register(IocpObj* iocpObj)
 {
-	CreateIoCompletionPort(socket, iocpHandle, key, 0);;
+	//iocpObj->GetHandle() : return (HANDLE)socket
+	//key는 안사용할꺼라 0
+	CreateIoCompletionPort(iocpObj->GetHandle(), iocpHandle, 0, 0);
 }
 
 bool IocpCore::ObserveIO(DWORD time)
@@ -27,24 +30,27 @@ bool IocpCore::ObserveIO(DWORD time)
 	printf("Waiting...\n");
 	if (GetQueuedCompletionStatus(iocpHandle, &bytesTransferred, &key, (LPOVERLAPPED*)&iocpEvent, time))
 	{
-		switch (iocpEvent->eventType)
-		{
-			case EventType::ACCEPT:
-				//TEST
-			{
-				AcceptEvent* acceptEvent = (AcceptEvent*)iocpEvent;
-				printf("Client connected.... %d byte\n", acceptEvent->session->testNum); 
-			}
-				
-				break;
-			default:
-				break;
-		}
-		
+		//Session과 Listener는 IocpObj 상속받을꺼임
+		IocpObj* iocpObj = iocpEvent->iocpObj;
+		//iocpObj의 ObserveIO는 가상함수이기 때문에
+		//할당된 자식이 Session이라면 Session->ObserveIO
+		//할당된 자식이 Listener라면  Listener->ObserveIO
+		iocpObj->ObserveIO(iocpEvent, bytesTransferred);
 	}
 	else
 	{
-		printf("GetQueuedCompletionStatus function failed with error : %d\n", WSAGetLastError());
+							  
+		//에러 코드 확인
+		switch (GetLastError())
+		{
+		case WAIT_TIMEOUT:
+			//GetQueuedCompletionStatus
+			//기다리는 시간 넘어간거니까 
+			//return false
+			return false;
+		default:
+			break;
+		}
 		return false;
 	}
 

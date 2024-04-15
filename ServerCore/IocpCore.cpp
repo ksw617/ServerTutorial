@@ -14,11 +14,10 @@ IocpCore::~IocpCore()
 	CloseHandle(iocpHandle);
 }
 
-void IocpCore::Register(IocpObj* iocpObj)
+//수정
+bool IocpCore::Register(IocpObj* iocpObj)
 {
-	//iocpObj->GetHandle() : return (HANDLE)socket
-	//key는 안사용할꺼라 0
-	CreateIoCompletionPort(iocpObj->GetHandle(), iocpHandle, 0, 0);
+	return CreateIoCompletionPort(iocpObj->GetHandle(), iocpHandle, 0, 0);
 }
 
 bool IocpCore::ObserveIO(DWORD time)
@@ -28,25 +27,21 @@ bool IocpCore::ObserveIO(DWORD time)
 	IocpEvent* iocpEvent = nullptr;
 
 	printf("Waiting...\n");
+	//Recv이벤트가 발생했을경우 wakeup
 	if (GetQueuedCompletionStatus(iocpHandle, &bytesTransferred, &key, (LPOVERLAPPED*)&iocpEvent, time))
 	{
-		//Session과 Listener는 IocpObj 상속받을꺼임
+		//iocpEvent는 RecvEvent
+		//RecvEvent의 iocpObj는 Session
 		IocpObj* iocpObj = iocpEvent->iocpObj;
-		//iocpObj의 ObserveIO는 가상함수이기 때문에
-		//할당된 자식이 Session이라면 Session->ObserveIO
-		//할당된 자식이 Listener라면  Listener->ObserveIO
+		//Sesssion->ObserveIO 호출
 		iocpObj->ObserveIO(iocpEvent, bytesTransferred);
 	}
 	else
 	{
 							  
-		//에러 코드 확인
 		switch (GetLastError())
 		{
 		case WAIT_TIMEOUT:
-			//GetQueuedCompletionStatus
-			//기다리는 시간 넘어간거니까 
-			//return false
 			return false;
 		default:
 			break;

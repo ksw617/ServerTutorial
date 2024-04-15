@@ -1,12 +1,22 @@
 #include "pch.h"
 #include <ServerService.h>
+#include <Session.h>
+
+class ServerSession : public Session
+{
+	virtual void OnConnected() override
+	{
+		cout << "On Connect 호출" << endl;
+	}
+};
 
 
 int main()
 {
 	printf("==== SERVER ====\n");
 
-	Service* service = new ServerService(L"127.0.0.1", 27015);
+	Service* service = new ServerService(L"127.0.0.1", 27015, []() {return new ServerSession; });
+
 
 	if (!service->Start())
 	{
@@ -14,8 +24,6 @@ int main()
 		return 1;
 	}
 
-
-	//람다로 관찰 실행
 	thread t([=]()
 		{
 			while (true)

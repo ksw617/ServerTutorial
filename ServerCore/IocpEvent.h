@@ -14,7 +14,6 @@ class IocpEvent	: public OVERLAPPED
 {
 public:
 	EventType eventType;
-	//IocpObj 주소 가지고 있게
 	class IocpObj* iocpObj;
 public:
 	IocpEvent(EventType type);
@@ -28,4 +27,11 @@ public:
 	class Session* session = nullptr;
 public:
 	AcceptEvent() : IocpEvent(EventType::ACCEPT) {}
+};
+
+//Recv 추가
+class RecvEvent : public IocpEvent
+{
+public:
+	RecvEvent() : IocpEvent(EventType::RECV) {}
 };

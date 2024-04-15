@@ -3,7 +3,7 @@
 #include "Listener.h"
 
 
-ServerService::ServerService(wstring ip, uint16 port) : Service(ServiceType::SERVER, ip, port)
+ServerService::ServerService(wstring ip, uint16 port, SessionFactory factory) : Service(ServiceType::SERVER, ip, port, factory)
 {
 }
 

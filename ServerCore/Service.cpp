@@ -2,11 +2,12 @@
 #include "Service.h"
 #include "SocketHelper.h"
 #include "IocpCore.h"
+#include "Session.h"
 
 
-Service::Service(ServiceType type, wstring ip, uint16 port)	: serviceType(type)
+Service::Service(ServiceType type, wstring ip, uint16 port, SessionFactory factory): serviceType(type), sessionFactory(factory)
 {
-	if (SocketHelper::StartUp())
+	if (!SocketHelper::StartUp())
 		return;
 
 	memset(&sockAddr, 0, sizeof(sockAddr));
@@ -30,6 +31,35 @@ Service::~Service()
 	}
 }
 
+
+Session* Service::CreateSession()
+{
+	//session만들어 주고
+	Session* session = sessionFactory();
+
+	//false 이면 nullptr
+	if (!iocpCore->Register(session))
+		return nullptr;
+
+	return session;
+}
+
+//추가
+void Service::AddSession(Session* session)
+{
+	unique_lock<shared_mutex> lock(rwLock);
+	sessionCount++;
+	sessions.insert(session);
+
+}
+
+//제거
+void Service::RemoveSession(Session* session)
+{
+	unique_lock<shared_mutex> lock(rwLock);
+	sessions.erase(session);
+	sessionCount--;
+}
 
 bool Service::ObserveIO(DWORD time)
 {

@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "SocketHelper.h"
 
+//초기화
+LPFN_CONNECTEX SocketHelper::ConnectEx = nullptr;
 LPFN_ACCEPTEX SocketHelper::AcceptEx = nullptr;
+LPFN_DISCONNECTEX SocketHelper::DisconnectEx = nullptr;
 
 bool SocketHelper::StartUp()
 {
@@ -10,7 +13,10 @@ bool SocketHelper::StartUp()
         return false;
 
     SOCKET tempSocket = CreateSocket();
+    //함수 포인터에 주소값 넣어줌
+    SetIoControl(tempSocket, WSAID_CONNECTEX, (LPVOID*)&ConnectEx);
     SetIoControl(tempSocket, WSAID_ACCEPTEX, (LPVOID*)&AcceptEx);
+    SetIoControl(tempSocket, WSAID_DISCONNECTEX, (LPVOID*)&DisconnectEx);
 
     CloseSocket(tempSocket);
 }
@@ -45,7 +51,6 @@ bool SocketHelper::SetLinger(SOCKET socket, u_short onOff, u_short time)
     return SetSocketOpt(socket, SOL_SOCKET, SO_LINGER, linger);
 }
 
-//추가
 bool SocketHelper::SetUpdateAcceptSocket(SOCKET acceptSocket, SOCKET ListenSocket)
 {
     return SetSocketOpt(acceptSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, ListenSocket);
@@ -53,6 +58,18 @@ bool SocketHelper::SetUpdateAcceptSocket(SOCKET acceptSocket, SOCKET ListenSocke
 
 bool SocketHelper::Bind(SOCKET socket, SOCKADDR_IN sockAddr)
 {
+    return bind(socket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != SOCKET_ERROR;
+}
+
+//아무 주소 바이딩
+bool SocketHelper::BindAny(SOCKET socket, uint16 port)
+{
+    SOCKADDR_IN sockAddr;
+    memset(&sockAddr, 0, sizeof(sockAddr));
+    sockAddr.sin_family = AF_INET;
+    sockAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    sockAddr.sin_port = htons(port);
+
     return bind(socket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != SOCKET_ERROR;
 }
 

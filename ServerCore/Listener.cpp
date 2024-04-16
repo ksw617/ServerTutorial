@@ -51,8 +51,7 @@ bool Listener::StartAccept(ServerService* service)
 void Listener::RegisterAccept(AcceptEvent* acceptEvent)
 {
 	Session* session = serverService->CreateSession();
-	//session¿¡ serverService µî·Ï 
-	session->SetService(serverService);
+
 	acceptEvent->Init();
 	acceptEvent->session = session;
 

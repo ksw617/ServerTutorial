@@ -8,6 +8,29 @@ class ServerSession : public Session
 	{
 		cout << "On Connect 호출" << endl;
 	}
+
+	virtual int OnRecv(BYTE* buffer, int len) override
+	{
+		cout << "OnRecv : " << buffer << ", On Recv Len : " << len << endl;
+
+		//받자마자 보내기
+		Send(buffer, len);
+		return len;
+	}
+
+	//
+	virtual void OnSend(int len) override
+	{
+		cout << "OnSend Len : " << len << endl;
+	}
+
+	virtual void OnDisconnected() override
+	{
+		cout << "On DisConnect 호출" << endl;
+	}
+
+
+
 };
 
 

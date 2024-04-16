@@ -34,17 +34,17 @@ Service::~Service()
 
 Session* Service::CreateSession()
 {
-	//session만들어 주고
 	Session* session = sessionFactory();
 
-	//false 이면 nullptr
+	//session 만들어 질때 등록
+	session->SetService(this);
+
 	if (!iocpCore->Register(session))
 		return nullptr;
 
 	return session;
 }
 
-//추가
 void Service::AddSession(Session* session)
 {
 	unique_lock<shared_mutex> lock(rwLock);
@@ -53,7 +53,6 @@ void Service::AddSession(Session* session)
 
 }
 
-//제거
 void Service::RemoveSession(Session* session)
 {
 	unique_lock<shared_mutex> lock(rwLock);

@@ -13,13 +13,79 @@ Session::~Session()
 	SocketHelper::CloseSocket(socket);
 }
 
+
+bool Session::Connect()
+{
+	return RegisterConnect();
+}
+
+void Session::Send(BYTE* buffer, int len)
+{
+	SendEvent* sendEvent = new SendEvent();
+
+	sendEvent->iocpObj = shared_from_this();
+
+	sendEvent->sendBuffer.resize(len);
+
+	memcpy(sendEvent->sendBuffer.data(), buffer, len);
+
+	unique_lock<shared_mutex> lock(rwLock);
+	RegisterSend(sendEvent);
+}
+
+void Session::Disconnect(const WCHAR* cause)
+{
+
+	if (isConnected.exchange(false) == false)
+		return;
+
+	wprintf(L"Disconnect reason : %ls\n", cause);
+
+	OnDisconnected();
+	//GetSeesion()으로 변환
+	GetService()->RemoveSession(GetSession());
+
+	RegisterDisconnect();
+}
+
+
+bool Session::RegisterConnect()
+{
+	if (IsConnected())
+		return false;
+
+	if (GetService()->GetServiceType() != ServiceType::CLIENT)
+		return false;
+
+	if (SocketHelper::BindAny(socket, 0) == false)
+		return false;
+
+	connectEvent.Init();
+	connectEvent.iocpObj = shared_from_this();
+
+	DWORD numOfBytes = 0;
+	SOCKADDR_IN sockAddr = GetService()->GetSockAddr();
+	if (SocketHelper::ConnectEx(socket, (SOCKADDR*)&sockAddr, sizeof(sockAddr), nullptr, 0, &numOfBytes, &connectEvent))
+	{
+		int errorCode = WSAGetLastError();
+		if (errorCode != ERROR_IO_PENDING)
+		{
+			HandleError(errorCode);
+			connectEvent.iocpObj = nullptr;
+			return false;
+		}
+	}
+
+	return true;
+}
+
 void Session::RegisterRecv()
 {
 	if (!IsConnected())
 		return;
 
 	recvEvent.Init();
-	recvEvent.iocpObj = this; 
+	recvEvent.iocpObj = shared_from_this();
 
 	WSABUF wsaBuf;
 	wsaBuf.buf = (char*)recvBuffer;
@@ -39,115 +105,6 @@ void Session::RegisterRecv()
 
 	}
 
-}
-
-
-void Session::ProcessRecv(int numOfBytes)
-{
-	recvEvent.iocpObj = nullptr;
-
-	if (numOfBytes == 0)
-	{
-		Disconnect(L"Recv 0 bytes");
-		return;
-	}
-
-	OnRecv(recvBuffer, numOfBytes);
-
-	RegisterRecv();
-
-}
-
-
-
-
-bool Session::Connect()
-{
-	return RegisterConnect();
-}
-
-
-bool Session::RegisterConnect()
-{
-	if (IsConnected())
-		return false;
-
-	if (GetService()->GetServiceType() != ServiceType::CLIENT)
-		return false;
-
-	if (SocketHelper::BindAny(socket, 0) == false)
-		return false;
-
-	connectEvent.Init();
-	connectEvent.iocpObj = this;
-
-	DWORD numOfBytes = 0;
-	SOCKADDR_IN sockAddr = GetService()->GetSockAddr();
-	if (SocketHelper::ConnectEx(socket, (SOCKADDR*)&sockAddr, sizeof(sockAddr), nullptr, 0, &numOfBytes, &connectEvent))
-	{
-		int errorCode = WSAGetLastError();
-		if (errorCode != ERROR_IO_PENDING)
-		{
-			HandleError(errorCode);
-			connectEvent.iocpObj = nullptr;
-			return false;
-		}
-	}
-
-	return true;
-}
-
-
-void Session::ObserveIO(IocpEvent* iocpEvent, DWORD bytesTransferred)
-{
-	switch (iocpEvent->eventType)
-	{
-		// EventType이 CONNECT라면
-	case EventType::CONNECT:
-		//Connect 진행
-		ProcessConnect();
-		break;
-	case EventType::RECV:
-		ProcessRecv(bytesTransferred);
-		break;
-	case EventType::SEND:
-		ProcessSend((SendEvent*)iocpEvent, bytesTransferred);
-		break;
-	default:
-		break;
-	}
-}
-
-
-void Session::ProcessConnect()
-{
-	//connectEvent의 iocpObj를 null로 밀기
-	connectEvent.iocpObj = nullptr;
-
-	isConnected.store(true);
-
-	GetService()->AddSession(this);
-
-	OnConnected();
-
-	RegisterRecv();
-}
-
-
-void Session::Send(BYTE* buffer, int len)
-{
-	SendEvent* sendEvent = new SendEvent();
-
-	sendEvent->iocpObj = this;
-
-
-	sendEvent->sendBuffer.resize(len);
-
-
-	memcpy(sendEvent->sendBuffer.data(), buffer, len);
-
-	unique_lock<shared_mutex> lock(rwLock);
-	RegisterSend(sendEvent);
 }
 
 void Session::RegisterSend(SendEvent* sendEvent)
@@ -175,6 +132,77 @@ void Session::RegisterSend(SendEvent* sendEvent)
 	}
 }
 
+bool Session::RegisterDisconnect()
+{
+	disconnectEvent.Init();
+	disconnectEvent.iocpObj = shared_from_this();
+
+	if (SocketHelper::DisconnectEx(socket, &disconnectEvent, TF_REUSE_SOCKET, 0))
+	{
+		int errorCode = WSAGetLastError();
+		if (errorCode != WSA_IO_PENDING)
+		{
+			HandleError(errorCode);
+			disconnectEvent.iocpObj = nullptr;
+			return false;
+
+		}
+	}
+	return true;
+}
+
+void Session::ObserveIO(IocpEvent* iocpEvent, DWORD bytesTransferred)
+{
+	switch (iocpEvent->eventType)
+	{
+	case EventType::CONNECT:
+		ProcessConnect();
+		break;
+	case EventType::RECV:
+		ProcessRecv(bytesTransferred);
+		break;
+	case EventType::SEND:
+		ProcessSend((SendEvent*)iocpEvent, bytesTransferred);
+		break;
+	case EventType::DISCONNECT:
+		ProcessDisconnect();
+		break;
+	default:
+		break;
+	}
+}
+
+
+void Session::ProcessConnect()
+{
+	connectEvent.iocpObj = nullptr;
+
+	isConnected.store(true);
+
+	//GetSeesion()으로 변환
+	GetService()->AddSession(GetSession());
+
+	OnConnected();
+
+	RegisterRecv();
+}
+
+void Session::ProcessRecv(int numOfBytes)
+{
+	recvEvent.iocpObj = nullptr;
+
+	if (numOfBytes == 0)
+	{
+		Disconnect(L"Recv 0 bytes");
+		return;
+	}
+
+	OnRecv(recvBuffer, numOfBytes);
+
+	RegisterRecv();
+
+}
+
 
 void Session::ProcessSend(SendEvent* sendEvent, int numOfBytes)
 {
@@ -193,18 +221,11 @@ void Session::ProcessSend(SendEvent* sendEvent, int numOfBytes)
 }
 
 
-void Session::Disconnect(const WCHAR* cause)
+void Session::ProcessDisconnect()
 {
-
-	if (isConnected.exchange(false) == false)
-		return;
-
-	wprintf(L"Disconnect reason : %ls\n", cause);
-
-	OnDisconnected();
-	SocketHelper::CloseSocket(socket);
-	GetService()->RemoveSession(this);
+	disconnectEvent.iocpObj = nullptr;
 }
+
 
 void Session::HandleError(int errorCode)
 {
@@ -212,9 +233,10 @@ void Session::HandleError(int errorCode)
 	{
 	case WSAECONNRESET:
 	case WSAECONNABORTED:
-		printf("Handle Eror\n");
+		Disconnect(L"Handle Error");
 		break;
 	default:
+		printf("Error Code : %d\n", errorCode);
 		break;
 	}
 }

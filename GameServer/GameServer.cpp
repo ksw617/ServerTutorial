@@ -19,6 +19,8 @@ public:
 	{
 		cout << "OnRecv : " << buffer << ", On Recv Len : " << len << endl;
 
+		//Todo Á¶¸³
+
 		Send(buffer, len);
 		return len;
 	}

@@ -1,24 +1,27 @@
 #include "pch.h"
 #include "SendBuffer.h"
+#include "SendBufferChunk.h"
 
-SendBuffer::SendBuffer(int size)
+SendBuffer::SendBuffer(shared_ptr<SendBufferChunk> chunk, BYTE* start, int size)
+    : sendBufferChunk(chunk), buffer(start), freeSize(size) // 초기화
 {
-    //버퍼 크기 할당
-    buffer.resize(size);
 }
 
 SendBuffer::~SendBuffer()
 {
 }
 
-bool SendBuffer::CopyData(void* data, int len)
-{
-    //복사할 데이터의 길이가 용량보다 크면
-	if (Capacity() < len)
-        return false;
+bool SendBuffer::Close(int usedSize)
+{						   
+	//남은 공간이 사용한 것보다 작다면
+	if (freeSize < usedSize)
+		return false;
 
-    //데이터 복사
-    memcpy(buffer.data(), data, len);
-    writeSize = len;
-    return true;
+	//사용한 사이즈에 넣어주고
+	writeSize = usedSize;
+
+	//쓴만큼 닫아주고
+	sendBufferChunk->Close(usedSize);
+
+	return true;
 }

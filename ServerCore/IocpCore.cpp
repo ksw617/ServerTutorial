@@ -27,7 +27,6 @@ bool IocpCore::ObserveIO(DWORD time)
 	ULONG_PTR key = 0;
 	IocpEvent* iocpEvent = nullptr;
 
-	printf("Waiting...\n");
 	if (GetQueuedCompletionStatus(iocpHandle, &bytesTransferred, &key, (LPOVERLAPPED*)&iocpEvent, time))
 	{
 		//스마트 포인터로 변환

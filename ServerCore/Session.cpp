@@ -4,7 +4,7 @@
 #include "Service.h"
 
 
-Session::Session() : recvBuffer(Buffer_SIZE)
+Session::Session() : recvBuffer(BUFFER_SIZE)
 {
 	socket = SocketHelper::CreateSocket();
 }
@@ -21,18 +21,33 @@ bool Session::Connect()
 }
 
 //수정
-void Session::Send(shared_ptr<SendBuffer> sendBuffer)
+void Session::Send(shared_ptr<SendBuffer> sendData)
 {
-	//Lock을 잡고
-	unique_lock<shared_mutex> lock(rwLock);
+	//연결 안되어 있음 return 
+	if (!IsConnected())
+		return;
 
-	//sendQueue에 처리할 sendBuffer 추가 // 일감 추가
-	sendQueue.push(sendBuffer);
+	//모든 스레드들의 기본값
+	bool registerSend = false;
 
-	//내가 처음 send를 하는 스레드 라면
-	if (sendRegistered.exchange(true) == false)
 	{
-		//RegisterSend 실행
+		//Lock을 잡고
+		unique_lock<shared_mutex> lock(rwLock);
+		//경합 해서 이긴애가 push
+		sendQueue.push(sendData);
+		//최초의 sendRegistered 값을 바꾸는 애 하나만 
+		if (sendRegistered.exchange(true) == false)
+		{
+			//registerSend를 true 할수 있음
+			registerSend = true;
+		}
+	}// Lock 풀림
+
+	//누구든지 접근 가능하지만 대신에 
+	//최초의 접근 한 애만 접근
+	if (registerSend)
+	{
+		//여기서는 선택된 스레드만 접근 가능
 		RegisterSend();
 	}
 }
@@ -90,61 +105,44 @@ void Session::RegisterSend()
 	if (!IsConnected())
 		return;
 
-	//SendEvent 초기화
 	sendEvent.Init();
-	//sendEvent의 iocp를 session으로
 	sendEvent.iocpObj = shared_from_this();
 
 
 	int writeSize = 0;
-	//sendQueue의 데이터가 남아 있지 않을때까지 돌림
 	while (!sendQueue.empty())
 	{
 
-		//sendQueue의 앞부분부터 pop시키기 위해서 앞부분 데이터 캐싱
-		shared_ptr<SendBuffer> sendBuffer = sendQueue.front();
-		//얼마나 사용했는지 크기 추가
-		writeSize += sendBuffer->WriteSize();
+		shared_ptr<SendBuffer> sendData = sendQueue.front();
+		writeSize += sendData->WriteSize();
 
-		//앞부분 날림
 		sendQueue.pop();
 
-		//SendEvent에 sendQueue에 들어 있는 값들을 밀어 넣음
-		sendEvent.sendBuffers.push_back(sendBuffer);
+		sendEvent.sendBuffers.push_back(sendData);
 	}
 
-	//한꺼번에 데이터를 보내기 위해
 	vector<WSABUF> wsaBufs;
-
-	//SendEvent의 sendBuffers크기 만큼 공간 예약 
 	wsaBufs.reserve(sendEvent.sendBuffers.size());
-
-	// SendEvent의 sendBuffers 순회하면서 등록
-	for (auto sendBuffer : sendEvent.sendBuffers)
+	for (auto sendData : sendEvent.sendBuffers)
 	{
 		WSABUF wsaBuf;
-		wsaBuf.buf = (char*)sendBuffer->GetBuffer();
-		wsaBuf.len = sendBuffer->WriteSize();
+		wsaBuf.buf = (char*)sendData->GetBuffer();
+		wsaBuf.len = sendData->WriteSize();
 		wsaBufs.push_back(wsaBuf);
 	}
 
 	DWORD sendLen = 0;
 	DWORD flags = 0;
 
-	//한꺼번에 여러개 보내기
 	if (WSASend(socket, wsaBufs.data(), (DWORD)wsaBufs.size(), &sendLen, flags, &sendEvent, nullptr) == SOCKET_ERROR)
 	{
 		int errorCode = WSAGetLastError();
 		if (errorCode != WSA_IO_PENDING)
 		{
 			HandleError(errorCode);
-			// Session에 있으니까
 			sendEvent.iocpObj = nullptr;
-			// SendEvent의 sendBuffers 깨끗이
 			sendEvent.sendBuffers.clear();
-			//sendRegistered 상태를 false
 			sendRegistered.store(false);
-
 		}
 
 	}

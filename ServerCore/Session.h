@@ -10,7 +10,7 @@ class Service;
 class Session : public IocpObj
 {
 	friend class Listener;
-	enum {Buffer_SIZE = 0x10000 };
+	enum {BUFFER_SIZE = 0x10000 };
 
 private:
 	shared_mutex rwLock; 
@@ -66,7 +66,7 @@ public:
 public:
 	bool Connect();
 	//SendBuffer·Î ¼öÁ¤
-	void Send(shared_ptr<SendBuffer> sendBuffer);
+	void Send(shared_ptr<SendBuffer> sendData);
 	void Disconnect(const WCHAR* cause);
 public:
 	void ObserveIO(IocpEvent* iocpEvent, DWORD bytesTransferred) override;

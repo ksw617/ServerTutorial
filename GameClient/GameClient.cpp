@@ -2,8 +2,9 @@
 #include "pch.h"
 #include <ClientService.h>
 #include <Session.h>
+#include <SendBufferManager.h> 
 
-char sendBuffer[] = "Hello This is Client";
+char sendData[] = "Hello This is Client";
 
 class ClientSession : public Session
 {
@@ -15,25 +16,31 @@ public:
 
 	virtual void OnConnected() override
 	{
-		cout << "Connect to Server" << endl;
-		Send((BYTE*)sendBuffer, sizeof(sendBuffer));
-		
+		shared_ptr<SendBuffer> sendBuffer = SendBufferManager::Get().Open(4096);
+		memcpy(sendBuffer->GetBuffer(), sendData, sizeof(sendData));
+		if (sendBuffer->Close(sizeof(sendData)))
+		{
+			Send(sendBuffer);
+		}
 	}
-
+	   
 	virtual int OnRecv(BYTE* buffer, int len) override
 	{
-		cout << "OnRecv : " << (char*)buffer << "/ Len : " << len << endl;
 
-		this_thread::sleep_for(1s);
+		this_thread::sleep_for(0.1s);
 
-		Send(buffer, len);
+		shared_ptr<SendBuffer> sendBuffer = SendBufferManager::Get().Open(4096);
+		memcpy(sendBuffer->GetBuffer(), buffer, len);
+		if (sendBuffer->Close(len))
+		{
+			Send(sendBuffer);
+		}
 
 		return len;
 	}
 
 	virtual void OnSend(int len) override
 	{
-		cout << "On Send Len : " << len << endl;
 	}
 
 	virtual void OnDisconnected() override
@@ -50,15 +57,18 @@ int main()
 {
 	printf("==== CLIENT ====\n");
 
-	//스마트 포인터로 변환	Service &  ClientSession
 	shared_ptr<Service> service = make_shared<ClientService>(L"127.0.0.1", 27015, []() {return make_shared<ClientSession>(); });
 
-
-	if (!service->Start())
+	for (int i = 0; i < 1000; i++)
 	{
-		printf("Server Service Error\n");
-		return 1;
+		if (!service->Start())
+		{
+			printf("Server Service Error\n");
+			return 1;
+		}
 	}
+
+
 
 	thread t([=]()
 		{
@@ -72,7 +82,6 @@ int main()
 
 	t.join();
 
-	//delete service;
 
 	return 0;
 }

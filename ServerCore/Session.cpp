@@ -20,34 +20,24 @@ bool Session::Connect()
 	return RegisterConnect();
 }
 
-//수정
 void Session::Send(shared_ptr<SendBuffer> sendData)
 {
-	//연결 안되어 있음 return 
 	if (!IsConnected())
 		return;
 
-	//모든 스레드들의 기본값
 	bool registerSend = false;
 
 	{
-		//Lock을 잡고
 		unique_lock<shared_mutex> lock(rwLock);
-		//경합 해서 이긴애가 push
 		sendQueue.push(sendData);
-		//최초의 sendRegistered 값을 바꾸는 애 하나만 
 		if (sendRegistered.exchange(true) == false)
 		{
-			//registerSend를 true 할수 있음
 			registerSend = true;
 		}
-	}// Lock 풀림
+	}
 
-	//누구든지 접근 가능하지만 대신에 
-	//최초의 접근 한 애만 접근
 	if (registerSend)
 	{
-		//여기서는 선택된 스레드만 접근 가능
 		RegisterSend();
 	}
 }
@@ -60,8 +50,8 @@ void Session::Disconnect(const WCHAR* cause)
 
 	wprintf(L"Disconnect reason : %ls\n", cause);
 
-	OnDisconnected();
-	GetService()->RemoveSession(GetSession());
+	//OnDisconnected();
+	//GetService()->RemoveSession(GetSession());
 
 	RegisterDisconnect();
 }
@@ -292,6 +282,10 @@ void Session::ProcessRecv(int numOfBytes)
 void Session::ProcessDisconnect()
 {
 	disconnectEvent.iocpObj = nullptr;
+
+	//이동
+	OnDisconnected();
+	GetService()->RemoveSession(GetSession());
 }
 
 

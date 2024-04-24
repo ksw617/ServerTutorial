@@ -1,63 +1,14 @@
 #pragma once
 #include "pch.h"
 #include <ClientService.h>
-#include <Session.h>
-#include <SendBufferManager.h> 
 
-char sendData[] = "Hello This is Client";
-
-class ClientSession : public Session
-{
-public:
-	~ClientSession()
-	{
-		cout << "Client Session Destroy" << endl;
-	}
-
-	virtual void OnConnected() override
-	{
-		shared_ptr<SendBuffer> sendBuffer = SendBufferManager::Get().Open(4096);
-		memcpy(sendBuffer->GetBuffer(), sendData, sizeof(sendData));
-		if (sendBuffer->Close(sizeof(sendData)))
-		{
-			Send(sendBuffer);
-		}
-	}
-	   
-	virtual int OnRecv(BYTE* buffer, int len) override
-	{
-
-		this_thread::sleep_for(0.1s);
-
-		shared_ptr<SendBuffer> sendBuffer = SendBufferManager::Get().Open(4096);
-		memcpy(sendBuffer->GetBuffer(), buffer, len);
-		if (sendBuffer->Close(len))
-		{
-			Send(sendBuffer);
-		}
-
-		return len;
-	}
-
-	virtual void OnSend(int len) override
-	{
-	}
-
-	virtual void OnDisconnected() override
-	{
-		cout << "On disconnected" << endl;
-	}
-
-
-
-};
-
+#include "ServerSession.h"
 
 int main()
 {
 	printf("==== CLIENT ====\n");
 
-	shared_ptr<Service> service = make_shared<ClientService>(L"127.0.0.1", 27015, []() {return make_shared<ClientSession>(); });
+	shared_ptr<Service> service = make_shared<ClientService>(L"127.0.0.1", 27015, []() {return make_shared<ServerSession>(); });
 
 	for (int i = 0; i < 1000; i++)
 	{

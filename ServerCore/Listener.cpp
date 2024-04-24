@@ -10,6 +10,12 @@
 Listener::~Listener()
 {
     CloseSocket();
+
+	//Listener 소멸 될때 AcceptEvent도 소멸 시켜줌
+	for (auto acceptEvent : acceptEvents)
+	{
+		delete(acceptEvent);
+	}
 }
 
 //스마트 포인터로 변환
@@ -28,7 +34,6 @@ bool Listener::StartAccept(shared_ptr<ServerService> service)
 		return false;
 
 	ULONG_PTR key = 0;
-	//this ->  shared_from_this()로 변환 : 스마트 포인터로 레퍼 관리
 	if (service->GetIocpCore()->Register(shared_from_this()) == false)
 		return false;
 
@@ -39,13 +44,19 @@ bool Listener::StartAccept(shared_ptr<ServerService> service)
 	if (!SocketHelper::Listen(socket))
 		return false;
 
+	
+	//AcceptEvent 갯수
+	const int acceptCount = 3;
+	//여러개 만들기
+	for (int i = 0; i < acceptCount; i++)
+	{
+		AcceptEvent* acceptEvent = new AcceptEvent();
+		acceptEvent->iocpObj = shared_from_this();
+		//acceptEvent들을 관리 하기 위해서
+		acceptEvents.push_back(acceptEvent);
+		RegisterAccept(acceptEvent);
+	}
 
-	printf("listening...\n");
-
-	AcceptEvent* acceptEvent = new AcceptEvent();
-	//스마트 포인터로 레퍼 관리
-	acceptEvent->iocpObj = shared_from_this();
-	RegisterAccept(acceptEvent);
 
 	return true;
 
@@ -54,7 +65,6 @@ bool Listener::StartAccept(shared_ptr<ServerService> service)
 
 void Listener::RegisterAccept(AcceptEvent* acceptEvent)
 {
-	//스마트 포인터로 변환
 	shared_ptr<Session> session = serverService->CreateSession();
 
 	acceptEvent->Init();
@@ -76,7 +86,6 @@ void Listener::ObserveIO(IocpEvent* iocpEvent, DWORD bytesTransferred)
 
 void Listener::ProcessAccept(AcceptEvent* acceptEvent)
 {
-	//스마트 포인터로 변환
 	shared_ptr<Session> session = acceptEvent->session;
 	if (!SocketHelper::SetUpdateAcceptSocket(session->GetSocket(), socket))
 	{

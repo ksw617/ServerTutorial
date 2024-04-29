@@ -39,4 +39,9 @@
       <Filter>Protobuf</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\protoc\Protocol.proto">
+      <Filter>Protobuf</Filter>
+    </None>
+  </ItemGroup>
 </Project>

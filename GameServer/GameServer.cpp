@@ -36,9 +36,12 @@ int main()
 
 	while (true)
 	{
-		Protocol::TEST packet;
-		packet.set_id(1);
-		packet.set_hp(2);
+		Protocol::Login packet;
+	
+		Protocol::Player* player = new Protocol::Player();
+		player->set_id(1);
+		player->set_name("곽상휘");
+		packet.set_allocated_player(player);
 
 		uint16 dataSize = (uint16)packet.ByteSizeLong();
 		uint16 packetSize = dataSize + sizeof(PacketHeader);
@@ -58,7 +61,7 @@ int main()
 		//1초에 4번정도 전체 메세지
 		this_thread::sleep_for(250ms);
 
-	}
+	}													  
 
 
 	for (int i = 0; i < THREAD_COUNT; i++)

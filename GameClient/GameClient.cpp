@@ -10,7 +10,7 @@ int main()
 
 	shared_ptr<Service> service = make_shared<ClientService>(L"127.0.0.1", 27015, []() {return make_shared<ServerSession>(); });
 
-	for (int i = 0; i < 1000; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		if (!service->Start())
 		{

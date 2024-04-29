@@ -45,4 +45,9 @@
       <Filter>Prorobuf</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\protoc\Protocol.proto">
+      <Filter>Prorobuf</Filter>
+    </None>
+  </ItemGroup>
 </Project>

@@ -27,6 +27,7 @@
     <ClCompile Include="Protocol.pb.cc">
       <Filter>Protobuf</Filter>
     </ClCompile>
+    <ClCompile Include="ServerPacketHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -38,6 +39,7 @@
     <ClInclude Include="Protocol.pb.h">
       <Filter>Protobuf</Filter>
     </ClInclude>
+    <ClInclude Include="ServerPacketHandler.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\protoc\Protocol.proto">

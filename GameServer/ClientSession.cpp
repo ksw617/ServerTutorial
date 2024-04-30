@@ -3,6 +3,7 @@
 #include <SendBufferManager.h>
 #include "SessionManager.h"
 
+#include "ClientPacketHandler.h"
 
 void ClientSession::OnConnected()
 {
@@ -12,6 +13,9 @@ void ClientSession::OnConnected()
 
 int ClientSession::OnRecvPacket(BYTE* buffer, int len)
 {
+	shared_ptr<PacketSession> session = GetPacketSession();
+	ClientPacketHandler::HandlePacket(session, buffer, len);
+
 	return len;
 }
 

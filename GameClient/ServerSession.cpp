@@ -2,25 +2,23 @@
 #include "ServerSession.h"
 
 #include "Protocol.pb.h"
+#include "ServerPacketHandler.h"
 
 void ServerSession::OnConnected()
 {
+	Protocol::C_LOGIN packet;
+	auto sendBuffer = ServerPacketHandler::MakeSendBuffer(packet);
+	
+	if (sendBuffer != nullptr)
+	{
+		Send(sendBuffer);
+	}	
 }
 
 int ServerSession::OnRecvPacket(BYTE* buffer, int len)
 {
-	
-	Protocol::Login packet;
-	packet.ParseFromArray(buffer + sizeof(PacketHeader), len - sizeof(PacketHeader));
-
-	if (packet.has_player())
-	{
-		const Protocol::Player& player = packet.player();
-		printf("ID : %d, Name : %s\n", player.id(), player.name().c_str());
-
-	}
-
-
+	shared_ptr<PacketSession> session = GetPacketSession();
+	ServerPacketHandler::HandlePacket(session, buffer, len);
 
 	return len;
 
